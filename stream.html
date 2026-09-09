@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RIFT — TikTok LIVE</title>
+<style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#070a12}
+#game{position:fixed;inset:0;width:100%;height:100%;border:0}
+#status{position:fixed;z-index:20;top:12px;left:12px;padding:7px 10px;border:1px solid #ffffff18;border-radius:8px;background:#091120dd;color:#9becbd;font:11px system-ui;backdrop-filter:blur(8px)}
+#status.offline{color:#ffbd7d}
+</style>
+</head>
+<body>
+<iframe id="game" src="./klawf.html"></iframe>
+<div id="status">TikTok: подключение…</div>
+<script>
+const frame=document.getElementById('game');
+const status=document.getElementById('status');
+const ws=new WebSocket(`ws://${location.host}/events`);
+
+function hideTestUI(){
+  const doc=frame.contentDocument;
+  if(!doc) return;
+  // Remove manual gift controls, username input and viewer simulator.
+  ['.sidebar .card:first-child'].forEach(s=>doc.querySelector(s)?.remove());
+  doc.querySelector('#username')?.remove();
+  doc.querySelector('#demoBtn')?.remove();
+  doc.querySelector('.local')?.remove();
+  // Keep only the real game controls: sound/pause/reset and live gift feed.
+}
+
+function setStatus(text,offline=false){
+  status.textContent=text;
+  status.classList.toggle('offline',offline);
+}
+
+frame.addEventListener('load',()=>{
+  hideTestUI();
+  setTimeout(hideTestUI,250);
+});
+
+ws.addEventListener('open',()=>setStatus('TikTok: мост подключён'));
+ws.addEventListener('close',()=>setStatus('TikTok: мост отключён',true));
+ws.addEventListener('error',()=>setStatus('TikTok: ошибка соединения',true));
+ws.addEventListener('message',e=>{
+  let msg; try{msg=JSON.parse(e.data)}catch{return}
+  if(msg.event==='status'){
+    if(msg.data.connected) setStatus(`TikTok LIVE: @${msg.data.username}`);
+    else setStatus('TikTok LIVE: не подключён',true);
+    return;
+  }
+  if(msg.event!=='gift') return;
+  const g=msg.data;
+  if(!g.type) return;
+  const win=frame.contentWindow;
+  if(!win?.receiveGift) return;
+  // RIFT already knows rose/meteor/galaxy. RepeatCount is applied as separate attacks.
+  const count=Math.min(100,Math.max(1,Number(g.repeatCount||1)));
+  for(let i=0;i<count;i++) win.receiveGift({type:g.type,user:g.user});
+});
+</script>
+</body>
+</html>
