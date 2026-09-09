@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RIFT — Автономная битва с боссом</title>
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#070a12;--panel:#101625;--line:#ffffff10;
+  --text:#eef3ff;--muted:#8896b3;--cyan:#6ef3ff;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;color:var(--text);
+  font-family:Inter,system-ui,-apple-system,Segoe UI,sans-serif;
+  background:
+    radial-gradient(ellipse at 20% 0,#152441,transparent 50%),
+    radial-gradient(ellipse at 100% 100%,#24132f,transparent 45%),var(--bg);
+  min-height:100vh;
+}
+button,input{font:inherit}
+button{cursor:pointer;color:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid var(--cyan);outline-offset:3px}
+button:disabled{opacity:.45;cursor:default}
+.app{max-width:1520px;margin:auto;padding:22px}
+header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:20px}
+.brand{display:flex;gap:12px;align-items:center}
+.logo{
+  height:44px;width:44px;display:grid;place-items:center;
+  border:1px solid #6ef3ff55;background:#6ef3ff0c;border-radius:13px;
+  color:var(--cyan);font-size:30px;box-shadow:0 0 35px #6ef3ff10;
+}
+.brand strong{font-size:23px;letter-spacing:6px}
+.brand small{display:block;font-size:9px;letter-spacing:2px;color:var(--muted);margin-top:3px}
+.tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.local{font-size:10px;color:#9becbd;border:1px solid #9becbd22;background:#9becbd08;border-radius:30px;padding:8px 12px}
+.tool{background:#ffffff05;border:1px solid var(--line);border-radius:9px;padding:9px 12px;font-size:11px}
+.tool:hover{background:#ffffff10}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:18px;align-items:start}
+.arena{
+  height:790px;position:relative;overflow:hidden;border-radius:23px;
+  border:1px solid #ffffff14;background:#080e1c;
+  box-shadow:0 30px 90px #0005;
+}
+canvas{width:100%;height:100%;display:block}
+.hud{position:absolute;top:24px;left:26px;right:26px;pointer-events:none}
+.hud-line{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.chip{font-size:10px;letter-spacing:1.7px;padding:8px 10px;background:#111c2ce8;border:1px solid #ffffff12;border-radius:7px}
+.timer{font-size:28px;font-weight:850;font-variant-numeric:tabular-nums}
+.timer.danger{color:#ff7d9c}
+.boss-title{font-size:23px;font-weight:850;margin-top:15px}
+.trait{font-size:11px;color:var(--muted);margin:5px 0 12px}
+.hp-info{font-size:10px;color:#a6b6d2;margin-bottom:7px;display:flex;justify-content:space-between}
+.hp-track{height:11px;background:#ffffff0a;border-radius:20px;overflow:hidden}
+.hp-fill{height:100%;width:100%;transform-origin:left;transition:transform .15s;background:linear-gradient(90deg,#9c79ff,#ff80ad)}
+.arena-bottom{
+  position:absolute;bottom:22px;left:24px;right:24px;
+  display:flex;justify-content:space-between;gap:10px;pointer-events:none;
+}
+.pill{
+  background:#091120dd;border:1px solid #ffffff12;
+  backdrop-filter:blur(10px);border-radius:10px;
+  padding:11px 13px;font-size:11px;color:#9cacc7;
+}
+.pill b{color:var(--cyan)}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+.metric{
+  padding:15px 17px;border:1px solid var(--line);
+  background:#101625aa;border-radius:13px;
+}
+.metric strong{display:block;font-size:24px;font-variant-numeric:tabular-nums}
+.metric span{font-size:10px;color:var(--muted)}
+.sidebar{display:flex;flex-direction:column;gap:14px}
+.card{
+  padding:19px;border:1px solid var(--line);border-radius:17px;
+  background:linear-gradient(140deg,#151d2deb,#0d1320ed);
+}
+.card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:15px;gap:8px}
+.card-head strong{font-size:12px}
+.tag{font-size:9px;color:#b7a2ff;background:#ad88ff0a;border:1px solid #ad88ff26;padding:5px 7px;border-radius:5px}
+label{display:block;font-size:10px;color:var(--muted);margin-bottom:7px}
+input{
+  width:100%;padding:10px 12px;border:1px solid #ffffff12;border-radius:9px;
+  background:#070d1888;color:#dbe7ff;margin-bottom:13px;font-size:12px;
+}
+.gift{
+  display:flex;align-items:center;gap:12px;width:100%;padding:12px;
+  background:#ffffff03;border:1px solid #ffffff0e;border-radius:12px;
+  margin-bottom:9px;text-align:left;transition:.15s;
+}
+.gift:hover{background:var(--tint);border-color:var(--accent);transform:translateY(-1px)}
+.gift:active{transform:scale(.98)}
+.gift-icon{
+  display:grid;place-items:center;width:42px;height:42px;flex-shrink:0;
+  background:var(--tint);border-radius:11px;font-size:24px;
+}
+.gift-info{flex:1}
+.gift-info strong{display:block;font-size:13px}
+.gift-info small{display:block;font-size:10px;color:var(--muted);margin-top:4px}
+.key{border:1px solid #ffffff16;color:#97a7c4;padding:4px 6px;border-radius:5px;font-size:10px}
+.hint{font-size:10px;color:var(--muted);line-height:1.7;margin:11px 0 0}
+.demo{
+  width:100%;display:flex;justify-content:space-between;align-items:center;
+  border:1px solid #ffffff13;background:#ffffff04;padding:11px 12px;border-radius:10px;
+  margin-top:13px;font-size:11px;
+}
+.switch{width:29px;height:16px;background:#35425b;border-radius:20px;position:relative}
+.switch:after{content:"";position:absolute;left:3px;top:3px;width:10px;height:10px;border-radius:50%;background:#9baac4;transition:.2s}
+.demo.active{border-color:#6ef3ff55;color:var(--cyan)}
+.demo.active .switch{background:#265e68}
+.demo.active .switch:after{transform:translateX(13px);background:var(--cyan)}
+.gift-feed{display:flex;flex-direction:column;gap:9px;max-height:330px;overflow:auto;padding-right:3px;scrollbar-width:thin}
+.feed-empty{font-size:12px;color:#677997;padding:22px 10px;text-align:center;line-height:1.8}
+.feed-item{
+  display:flex;gap:10px;align-items:flex-start;border:1px solid #ffffff08;
+  border-radius:11px;background:#ffffff025;padding:11px;
+  animation:arrive .3s ease-out;
+}
+@keyframes arrive{from{opacity:0;transform:translateX(13px)}to{opacity:1;transform:translateX(0)}}
+.feed-emoji{font-size:21px;background:#ffffff06;border-radius:8px;min-width:35px;height:35px;display:grid;place-items:center}
+.feed-main{flex:1;min-width:0}
+.feed-top{display:flex;justify-content:space-between;gap:7px;align-items:center}
+.feed-user{font-size:11px;font-weight:750;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.feed-time{font-size:9px;color:#63738f;white-space:nowrap}
+.feed-gift{font-size:10px;color:#8193b1;margin-top:3px}
+.feed-result{font-size:10px;margin-top:6px;color:#adbad0;line-height:1.45}
+.feed-result.critical{color:#ffbd7d}
+.feed-result.done{color:#8ce6c0}
+.feed-result.pending{color:#9e96c2}
+.adaptive{font-size:11px;color:#a9b8d1;line-height:1.75}
+.legend{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
+.legend span{font-size:10px;border:1px solid #ffffff12;border-radius:6px;padding:5px 8px}
+.last-event{font-size:10px;line-height:1.65;color:#7586a3;margin-top:12px}
+footer{display:flex;justify-content:space-between;gap:12px;color:#526580;font-size:10px;margin-top:18px}
+@media(min-width:1400px){.arena{height:850px}}
+@media(max-width:1050px){
+  .layout{grid-template-columns:minmax(0,1fr) 305px;gap:12px}
+  .app{padding:14px}.card{padding:15px}.arena{height:750px}
+  .hud{left:18px;right:18px}.boss-title{font-size:20px}
+  .metric{padding:12px}.metric strong{font-size:21px}
+}
+@media(max-width:760px){
+  .layout{grid-template-columns:1fr}
+  .arena{height:660px}
+  .sidebar{display:grid;grid-template-columns:1fr 1fr}
+  .sidebar .card:last-child{grid-column:1/-1}
+  .local{display:none}
+  .metrics{gap:7px}.metric{padding:10px}.metric strong{font-size:20px}
+  .metric span{font-size:9px}
+}
+@media(max-width:500px){
+  .app{padding:9px}.arena{height:600px}
+  .sidebar{grid-template-columns:1fr}
+  .brand strong{font-size:19px}.brand small{font-size:8px}
+  .tools{gap:5px}.tool{font-size:10px;padding:8px}
+  header{gap:8px}.logo{width:35px;height:38px}
+  .hud{top:18px;left:16px;right:16px}
+  .arena-bottom{left:12px;right:12px;bottom:15px}
+  .pill{padding:8px;font-size:9px}.boss-title{font-size:19px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <div class="brand">
+    <div class="logo">ϟ</div>
+    <div><strong>RIFT</strong><small>AUTONOMOUS BOSS ARENA</small></div>
+  </div>
+  <div class="tools">
+    <span class="local">● OFFLINE TEST</span>
+    <button class="tool" id="soundBtn">Звук: выкл</button>
+    <button class="tool" id="pauseBtn">Пауза</button>
+    <button class="tool" id="resetBtn">↻ Сброс</button>
+  </div>
+</header>
+
+<main class="layout">
+  <div>
+    <section class="arena" id="arena">
+      <canvas id="canvas" aria-label="Автономная арена. Для атаки используйте кнопки подарков."></canvas>
+      <div class="hud">
+        <div class="hud-line">
+          <span class="chip" id="roundText">РАУНД 01</span>
+          <span class="timer" id="timer">00:45</span>
+        </div>
+        <div class="boss-title" id="bossName"></div>
+        <div class="trait" id="traitText"></div>
+        <div class="hp-info"><span>ЗДОРОВЬЕ БОССА</span><span id="hpText"></span></div>
+        <div class="hp-track"><div class="hp-fill" id="hpFill"></div></div>
+      </div>
+      <div class="arena-bottom">
+        <div class="pill" id="zoneText"></div>
+        <div class="pill">В очереди: <b id="queueText">0</b></div>
+      </div>
+    </section>
+    <div class="metrics">
+      <div class="metric"><strong id="damageStat">0</strong><span>урон за раунд</span></div>
+      <div class="metric"><strong id="critStat">0</strong><span>критических ударов</span></div>
+      <div class="metric"><strong id="giftsStat">0</strong><span>подарков отправлено</span></div>
+      <div class="metric"><strong id="winsStat">0</strong><span>боссов побеждено</span></div>
+    </div>
+  </div>
+
+  <aside class="sidebar">
+    <section class="card">
+      <div class="card-head"><strong>Отправить подарок</strong><span class="tag">БЕСПЛАТНЫЙ ТЕСТ</span></div>
+      <label for="username">Имя отправителя</label>
+      <input id="username" value="Ты" maxlength="30" autocomplete="off">
+
+      <button class="gift" data-gift="rose" style="--accent:#6ef3ff;--tint:#6ef3ff10">
+        <span class="gift-icon">🌹</span>
+        <span class="gift-info"><strong>Роза</strong><small>45 урона · энергетический импульс</small></span>
+        <span class="key">1</span>
+      </button>
+      <button class="gift" data-gift="meteor" style="--accent:#ffbd7d;--tint:#ffbd7d10">
+        <span class="gift-icon">☄️</span>
+        <span class="gift-info"><strong>Метеор</strong><small>180 урона · взрыв по площади</small></span>
+        <span class="key">2</span>
+      </button>
+      <button class="gift" data-gift="galaxy" style="--accent:#b69aff;--tint:#b69aff10">
+        <span class="gift-icon">🌌</span>
+        <span class="gift-info"><strong>Галактика</strong><small>500 урона · пространственный разрыв</small></span>
+        <span class="key">3</span>
+      </button>
+
+      <p class="hint">Никакого прицеливания. Каждый подарок сам выбирает точку удара. Уязвимость проверяется в момент попадания. Клавиши 1 / 2 / 3 тоже отправляют подарки.</p>
+      <button class="demo" id="demoBtn" aria-pressed="false"><span>Симулятор зрителей</span><span class="switch"></span></button>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><strong>Последние подарки</strong><span class="tag" id="feedCount">0 СОБЫТИЙ</span></div>
+      <div class="gift-feed" id="giftFeed">
+        <div class="feed-empty">Здесь появятся подарки,<br>отправители и нанесённый урон.</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head"><strong>Баланс разлома</strong><span class="tag" id="difficultyText">×1.00 HP</span></div>
+      <div class="adaptive" id="adaptiveText">Ранняя победа усиливает следующего босса. Если времени не хватило — следующий босс станет слабее.</div>
+      <div class="legend">
+        <span style="color:#6ef3ff">×2 — разлом</span>
+        <span style="color:#ffbd7d">×3 — ядро</span>
+        <span style="color:#ff83bc">×4 — перегруз</span>
+      </div>
+      <p class="hint">Взрыв использует максимальный множитель задетой зоны. Подарки в очереди не теряются: оставшиеся атакуют следующего босса.</p>
+      <div class="last-event" id="lastEvent">Битва начнётся с первого подарка.</div>
+    </section>
+  </aside>
+</main>
+<footer><span>RIFT / AUTONOMOUS PROTOTYPE</span><span>Без TikTok · Без покупок · Все подарки тестовые</span></footer>
+</div>
+
+<script>
+(() => {
+"use strict";
+const $ = id => document.getElementById(id);
+const canvas = $("canvas"), ctx = canvas.getContext("2d");
+const W = 900, H = 820, TAU = Math.PI * 2, ROUND_SECONDS = 45;
+const random = (a,b) => a + Math.random()*(b-a);
+const pick = list => list[Math.floor(Math.random()*list.length)];
+const clamp = (n,a,b) => Math.max(a,Math.min(b,n));
+const fmt = n => Math.round(n).toLocaleString("ru-RU");
+const alpha = (hex,a) => hex + Math.round(clamp(a,0,1)*255).toString(16).padStart(2,"0");
+
+const gifts = {
+  rose:{name:"Роза",emoji:"🌹",damage:45,area:0,color:"#6ef3ff",flight:.43,size:5},
+  meteor:{name:"Метеор",emoji:"☄️",damage:180,area:42,color:"#ffbd7d",flight:.64,size:12},
+  galaxy:{name:"Галактика",emoji:"🌌",damage:500,area:88,color:"#b69aff",flight:.85,size:18}
+};
+const archetypes = [
+  {name:"Титан",hue:195},
+  {name:"Оракул",hue:280},
+  {name:"Дракон",hue:350},
+  {name:"Кристаллит",hue:155},
+  {name:"Серафим",hue:35},
+  {name:"Левиафан",hue:220}
+];
+const suffixes = ["Пустоты","Затмения","Бездны","Сверхновой","Хаоса","Эфира","Забвения","Рассвета"];
+const traits = [
+  {name:"Нестабильный",desc:"быстрая смена уязвимостей",period:2.7,speed:1.2,size:1},
+  {name:"Фазовый",desc:"уязвимости двигаются быстрее",period:4,speed:2,size:1},
+  {name:"Колоссальный",desc:"увеличенные корпус и зоны",period:4.4,speed:.8,size:1.1},
+  {name:"Резонансный",desc:"долгие окна уязвимости",period:5.1,speed:.8,size:1},
+  {name:"Хаотичный",desc:"частые смещения энергетических ядер",period:3.3,speed:1.6,size:.96}
+];
+
+let view = {w:1,h:1,s:1,x:0,y:0,dpr:1};
+let boss, previousType = -1, round = 1, difficulty = 1, nextDifficulty = 1;
+let mode = "waiting", paused = false, elapsed = 0, time = 0, zoneTime = 4;
+let intermission = 0, result = null, wins = 0, totalGifts = 0;
+let roundDamage = 0, roundCrits = 0, queue = [], active = null;
+let particles = [], rings = [], labels = [], beams = [];
+let shake = 0, flash = 0, spawnDelay = 0;
+let demo = false, demoTimer = .5, sound = false, audio;
+let feedRows = [], lastUi = 0;
+const demoNames = ["Луна","NeonFox","Алекс","КиберКот","Мира","StarLord","Аня","Pixel"];
+
+function tone(freq,duration=.13,gain=.035,type="triangle"){
+  if(!sound) return;
+  try{
+    audio ||= new (window.AudioContext || window.webkitAudioContext)();
+    if(audio.state==="suspended") audio.resume();
+    const o=audio.createOscillator(),g=audio.createGain(),t=audio.currentTime;
+    o.type=type;o.frequency.setValueAtTime(freq,t);
+    o.frequency.exponentialRampToValueAtTime(Math.max(35,freq*.4),t+duration);
+    g.gain.setValueAtTime(gain,t);g.gain.exponentialRampToValueAtTime(.001,t+duration);
+    o.connect(g);g.connect(audio.destination);o.start();o.stop(t+duration);
+  }catch(e){}
+}
+function position(){
+  return {x:450+Math.sin(time*.6+boss.seed)*13,y:397+Math.cos(time*.85+boss.seed)*9};
+}
+function setZones(initial=false){
+  const offset=random(0,TAU);
+  // Fisher–Yates: расположение множителей меняется каждый цикл.
+  const multipliers=[2,3,4];
+  for(let i=2;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [multipliers[i],multipliers[j]]=[multipliers[j],multipliers[i]];
+  }
+  boss.zones.forEach((z,i)=>{
+    const angle=offset+i*TAU/3+random(-.2,.2);
+    z.tx=Math.cos(angle)*random(65,133);
+    z.ty=Math.sin(angle)*random(70,138);
+    z.radius=random(25,31);
+    z.mult=multipliers[i];
+    z.color=z.mult===2?"#6ef3ff":z.mult===3?"#ffbd7d":"#ff83bc";
+    if(initial){z.x=z.tx;z.y=z.ty;}
+  });
+  zoneTime=boss.trait.period;
+}
+function createBoss(){
+  let type;
+  do{type=Math.floor(random(0,archetypes.length));}while(type===previousType);
+  previousType=type;
+  const archetype=archetypes[type],trait=pick(traits);
+  const hue=(archetype.hue+random(-25,25)+360)%360;
+  boss={
+    type,trait,hue,seed:random(0,100),size:trait.size,
+    name:archetype.name+" "+pick(suffixes),
+    maxHP:Math.round(3500*difficulty),hp:Math.round(3500*difficulty),
+    color:`hsl(${hue},90%,70%)`,
+    edge:`hsla(${hue},90%,75%,.65)`,
+    dark:`hsl(${hue},45%,16%)`,
+    hit:0,
+    zones:Array.from({length:3},()=>({x:0,y:0,tx:0,ty:0,radius:28,mult:2,color:"#6ef3ff"}))
+  };
+  setZones(true);
+  elapsed=0;roundDamage=0;roundCrits=0;spawnDelay=.12;
+  $("bossName").textContent=boss.name;
+  $("traitText").textContent=trait.name+" · "+trait.desc;
+  $("roundText").textContent="РАУНД "+String(round).padStart(2,"0");
+  $("difficultyText").textContent="×"+difficulty.toFixed(2)+" HP";
+  $("hpFill").style.background=`linear-gradient(90deg,hsl(${hue},80%,57%),hsl(${(hue+55)%360},95%,74%))`;
+  updateUI();
+}
+
+function addFeed(event){
+  if(!feedRows.length) $("giftFeed").replaceChildren();
+  const row=document.createElement("div");row.className="feed-item";
+  const icon=document.createElement("span");icon.className="feed-emoji";icon.textContent=event.gift.emoji;
+  const main=document.createElement("div");main.className="feed-main";
+  const top=document.createElement("div");top.className="feed-top";
+  const name=document.createElement("span");name.className="feed-user";name.textContent=event.user;
+  const date=document.createElement("span");date.className="feed-time";
+  date.textContent=new Date().toLocaleTimeString("ru-RU",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  top.append(name,date);
+  const gift=document.createElement("div");gift.className="feed-gift";gift.textContent=event.gift.name+" ×1";
+  const status=document.createElement("div");status.className="feed-result pending";status.textContent="В очереди на атаку";
+  main.append(top,gift,status);row.append(icon,main);
+  event.statusElement=status;
+  $("giftFeed").prepend(row);
+  feedRows.unshift(row);
+  if(feedRows.length>15)feedRows.pop().remove();
+}
+function eventStatus(event,text,className="pending"){
+  if(event.statusElement){
+    event.statusElement.textContent=text;
+    event.statusElement.className="feed-result "+className;
+  }
+}
+
+/*
+  Единая точка входа подарков.
+  Сейчас её вызывают кнопки и симулятор.
+  В будущем адаптер TikTok может вызывать:
+  window.receiveGift({type:"rose",user:"Имя зрителя"});
+  Внешнее подключение в этот файл не включено.
+*/
+window.receiveGift = function({type,user} = {}){
+  if(!Object.prototype.hasOwnProperty.call(gifts,type)) return false;
+  const event={
+    id:++totalGifts,
+    gift:gifts[type],
+    type,
+    user:String(user || "Зритель").trim().slice(0,30) || "Зритель"
+  };
+  queue.push(event);addFeed(event);
+  if(mode==="waiting"){
+    mode="running";
+    $("lastEvent").textContent="Битва началась. Все атаки наводятся автоматически.";
+  }
+  updateUI();
+  return true;
+};
+
+function launch(){
+  if(active||!queue.length||mode!=="running")return;
+  const event=queue.shift();
+  // Подарок сам выбирает локальную точку на теле босса.
+  // Часть атак направляется к текущей уязвимости, но за время
+  // полёта зона может уйти: множитель вычисляется при попадании.
+  let x,y;
+  if(Math.random()<.52){
+    const z=pick(boss.zones);
+    x=z.x+random(-31,31);y=z.y+random(-31,31);
+  }else{
+    const a=random(0,TAU),r=Math.sqrt(Math.random());
+    x=Math.cos(a)*r*168;y=Math.sin(a)*r*175;
+  }
+  active={
+    event,localX:x,localY:y,progress:0,
+    sx:450+random(-65,65),sy:760,x:450,y:760,tx:450,ty:397
+  };
+  eventStatus(event,"Атака летит к боссу…");
+  tone(event.type==="rose"?610:event.type==="meteor"?230:115,.13,.025);
+}
+
+function burst(x,y,color,count=20,speed=210){
+  for(let i=0;i<count;i++){
+    const a=random(0,TAU),v=random(speed*.2,speed),life=random(.3,.95);
+    particles.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,color,life,max:life,size:random(1.5,4.5)});
+  }
+  if(particles.length>600)particles.splice(0,particles.length-600);
+}
+function ring(x,y,color,radius=80,life=.5){
+  rings.push({x,y,color,radius,life,max:life});
+}
+function floatText(x,y,text,color,size=25){
+  labels.push({x,y,text,color,size,life:1.25,max:1.25});
+}
+function hit(attack){
+  const event=attack.event,g=event.gift,p=position();
+  const x=p.x+attack.localX*boss.size,y=p.y+attack.localY*boss.size;
+  let mult=1;
+  for(const z of boss.zones){
+    if(Math.hypot(attack.localX-z.x,attack.localY-z.y)<=z.radius+g.area/boss.size){
+      mult=Math.max(mult,z.mult);
+    }
+  }
+  const potential=g.damage*mult,damage=Math.min(potential,boss.hp);
+  boss.hp-=damage;roundDamage+=damage;
+  if(mult>1)roundCrits++;
+  boss.hit=.18;
+  shake=Math.max(shake,event.type==="galaxy"?14:event.type==="meteor"?7:3);
+  if(event.type==="galaxy"){
+    flash=.18;
+    beams.push({x,y,color:g.color,life:.45,max:.45});
+  }
+  burst(x,y,g.color,event.type==="galaxy"?75:event.type==="meteor"?40:19,event.type==="galaxy"?390:240);
+  ring(x,y,g.color,g.area+52,.6);
+  floatText(x,y-25,"−"+fmt(damage)+(mult>1?"  ×"+mult:""),mult>1?"#ffd08e":g.color,mult>1?32:26);
+  floatText(x,y+9,event.user+" · "+g.emoji,"#cad8ef",13);
+  eventStatus(event,`${fmt(damage)} урона${mult>1?" · УЯЗВИМОСТЬ ×"+mult:""} · раунд ${round}`,mult>1?"critical":"done");
+  tone(mult>1?860:290,.14,.04);
+  if(boss.hp<=0)finish(true,event.user);
+}
+
+function finish(won,killer=""){
+  if(mode!=="running")return;
+  mode="between";intermission=3.5;
+  const factor=won
+    ?1.04+.56*(1-elapsed/ROUND_SECONDS)
+    :.65+.30*(1-boss.hp/boss.maxHP);
+  nextDifficulty=clamp(difficulty*factor,.25,30);
+  const change=Math.round((nextDifficulty/difficulty-1)*100);
+  const changeString=(change>0?"+":"")+change+"%";
+  result={won,killer,change:changeString};
+  // Если раунд закончился по времени во время полёта,
+  // подарок переносится на следующего босса.
+  if(active){
+    queue.unshift(active.event);
+    eventStatus(active.event,"Перенесён на следующего босса");
+    active=null;
+  }
+  if(won){
+    wins++;
+    const p=position();
+    burst(p.x,p.y,boss.color,120,470);
+    ring(p.x,p.y,boss.color,350,1);
+    flash=.5;shake=20;tone(670,.5,.06);
+  }else tone(100,.45,.03,"sawtooth");
+  $("adaptiveText").textContent=won
+    ?`Победа за ${elapsed.toFixed(1)} с. Следующий босс: ${changeString} здоровья.`
+    :`Время вышло. Осталось ${Math.ceil(boss.hp/boss.maxHP*100)}% HP. Следующий босс: ${changeString} здоровья.`;
+  $("lastEvent").textContent=won
+    ?`Последний удар: ${killer}. Новый босс появится автоматически.`
+    :"Босс удержал разлом. Следующий раунд начнётся автоматически.";
+  updateUI();
+}
+
+function updateUI(){
+  const seconds=Math.max(0,Math.ceil(ROUND_SECONDS-elapsed));
+  $("timer").textContent="00:"+String(seconds).padStart(2,"0");
+  $("timer").classList.toggle("danger",seconds<=10);
+  $("hpText").textContent=fmt(boss.hp)+" / "+fmt(boss.maxHP);
+  $("hpFill").style.transform=`scaleX(${Math.max(0,boss.hp/boss.maxHP)})`;
+  $("zoneText").innerHTML=mode==="between"
+    ?"Открывается <b>новый разлом</b>"
+    :`Смена уязвимостей: <b>${Math.max(0,zoneTime).toFixed(1)}с</b>`;
+  $("queueText").textContent=queue.length;
+  $("damageStat").textContent=fmt(roundDamage);
+  $("critStat").textContent=roundCrits;
+  $("giftsStat").textContent=fmt(totalGifts);
+  $("winsStat").textContent=wins;
+  $("feedCount").textContent=fmt(totalGifts)+" СОБЫТИЙ";
+}
+
+function update(dt){
+  if(paused)return;
+  time+=dt;shake=Math.max(0,shake-dt*29);flash=Math.max(0,flash-dt);
+  boss.hit=Math.max(0,boss.hit-dt);
+
+  if(mode!=="between"){
+    for(const z of boss.zones){
+      const k=1-Math.exp(-dt*1.7*boss.trait.speed);
+      z.x+=(z.tx+Math.sin(time*1.4*boss.trait.speed+z.mult)*14-z.x)*k;
+      z.y+=(z.ty+Math.cos(time*1.1*boss.trait.speed+z.mult)*13-z.y)*k;
+    }
+  }
+
+  if(demo){
+    demoTimer-=dt;
+    if(demoTimer<=0){
+      demoTimer=random(.6,1.3);
+      const n=Math.random();
+      window.receiveGift({type:n<.72?"rose":n<.94?"meteor":"galaxy",user:pick(demoNames)});
+    }
+  }
+
+  if(mode==="running"){
+    elapsed=Math.min(ROUND_SECONDS,elapsed+dt);
+    zoneTime-=dt;if(zoneTime<=0)setZones();
+    if(elapsed>=ROUND_SECONDS){
+      finish(false);
+    }else{
+      spawnDelay-=dt;
+      if(!active&&spawnDelay<=0)launch();
+      if(active){
+        const a=active,p=position(),g=a.event.gift;
+        a.progress+=dt/g.flight;
+        const t=clamp(a.progress,0,1);
+        a.tx=p.x+a.localX*boss.size;a.ty=p.y+a.localY*boss.size;
+        a.x=a.sx+(a.tx-a.sx)*t;
+        a.y=a.sy+(a.ty-a.sy)*t-Math.sin(t*Math.PI)*(a.event.type==="rose"?0:100);
+        if(t>=1){
+          active=null;spawnDelay=.1;hit(a);
+        }
+      }
+    }
+  }else if(mode==="between"){
+    intermission-=dt;
+    if(intermission<=0){
+      difficulty=nextDifficulty;round++;
+      createBoss();mode="running";
+    }
+  }
+
+  for(let i=particles.length-1;i>=0;i--){
+    const p=particles[i];p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
+    p.vy+=75*dt;p.vx*=Math.exp(-dt*1.4);
+    if(p.life<=0)particles.splice(i,1);
+  }
+  for(const list of [rings,labels,beams]){
+    for(let i=list.length-1;i>=0;i--){
+      list[i].life-=dt;
+      if(list===labels)list[i].y-=dt*47;
+      if(list[i].life<=0)list.splice(i,1);
+    }
+  }
+  if(time-lastUi>.07){updateUI();lastUi=time;}
+}
+
+// -------------------- ГРАФИКА --------------------
+
+function ellipse(x,y,rx,ry,fill,stroke,width=1){
+  ctx.beginPath();ctx.ellipse(x,y,Math.max(.01,rx),Math.max(.01,ry),0,0,TAU);
+  if(fill){ctx.fillStyle=fill;ctx.fill();}
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}
+}
+function poly(points,fill,stroke,width=1){
+  ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));ctx.closePath();
+  if(fill){ctx.fillStyle=fill;ctx.fill();}
+  if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=width;ctx.stroke();}
+}
+function line(points,color,width=2){
+  ctx.beginPath();points.forEach(([x,y],i)=>i?ctx.lineTo(x,y):ctx.moveTo(x,y));
+  ctx.strokeStyle=color;ctx.lineWidth=width;ctx.lineCap="round";ctx.lineJoin="round";ctx.stroke();
+}
+function text(value,x,y,size,color,weight=700){
+  ctx.font=`${weight} ${size}px system-ui,sans-serif`;ctx.fillStyle=color;ctx.textAlign="center";ctx.fillText(value,x,y);
+}
+const stars=Array.from({length:105},()=>({x:random(0,W),y:random(0,H),r:random(.5,1.6),phase:random(0,TAU)}));
+
+function background(){
+  const bg=ctx.createLinearGradient(0,0,0,H);bg.addColorStop(0,"#0a1122");bg.addColorStop(1,"#080c18");
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  const glow=ctx.createRadialGradient(450,400,20,450,400,350);
+  glow.addColorStop(0,`hsla(${boss.hue},80%,40%,.2)`);
+  glow.addColorStop(1,"transparent");
+  ctx.fillStyle=glow;ctx.fillRect(0,0,W,H);
+  for(const s of stars){
+    ellipse(s.x,(s.y-time*3+H*1000)%H,s.r,s.r,`rgba(165,198,255,${.17+(Math.sin(time*.6+s.phase)+1)*.16})`);
+  }
+  for(let x=-400;x<=1300;x+=90){
+    line([[450+(x-450)*.08,540],[x,H]],"#84aaff09",1);
+  }
+  for(let i=0;i<10;i++){
+    const y=540+(i/9)**2*280;
+    line([[0,y],[W,y]],"#84aaff09",1);
+  }
+  ellipse(450,651,248,47,"#0b142055",`hsla(${boss.hue},90%,72%,.2)`,1);
+  ellipse(450,651,207,33,null,`hsla(${boss.hue},90%,72%,.35)`,2);
+  ellipse(450,651,150,20,null,"#ffffff10",1);
+  ctx.save();ctx.translate(450,651);ctx.scale(1,.18);ctx.rotate(time*.23);
+  for(let i=0;i<4;i++){
+    ctx.beginPath();ctx.arc(0,0,230,i*TAU/4,i*TAU/4+.65);
+    ctx.strokeStyle=boss.color;ctx.lineWidth=3;ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawBoss(){
+  if(mode==="between"&&result.won)return;
+  const p=position(),edge=boss.edge,c=boss.color;
+  ctx.save();ctx.translate(p.x,p.y);ctx.scale(boss.size,boss.size);
+  if(mode==="between")ctx.globalAlpha=.5;
+  const aura=ctx.createRadialGradient(0,0,80,0,0,220);
+  aura.addColorStop(0,`hsla(${boss.hue},70%,50%,.025)`);
+  aura.addColorStop(1,`hsla(${boss.hue},90%,70%,.075)`);
+  ellipse(0,0,220,223,aura,`hsla(${boss.hue},85%,75%,.14)`,1);
+  ctx.save();ctx.rotate(time*.1);
+  for(let i=0;i<12;i++){
+    const a=i*TAU/12;
+    line([[Math.cos(a)*233,Math.sin(a)*233],[Math.cos(a)*240,Math.sin(a)*240]],edge,1.5);
+  }
+  ctx.restore();
+
+  const body=ctx.createLinearGradient(-120,-170,140,160);
+  body.addColorStop(0,`hsl(${boss.hue},50%,37%)`);
+  body.addColorStop(.5,boss.dark);
+  body.addColorStop(1,`hsl(${(boss.hue+30)%360},45%,10%)`);
+  ctx.shadowColor=c;ctx.shadowBlur=17;
+
+  switch(boss.type){
+    case 0:
+      for(const s of [-1,1]){
+        poly([[s*87,-78],[s*170,-112],[s*205,-57],[s*185,52],[s*126,83]],body,edge,2);
+        poly([[s*146,57],[s*192,53],[s*199,135],[s*154,157],[s*135,110]],body,edge,2);
+        line([[s*159,-63],[s*177,-27],[s*161,17]],c,5);
+      }
+      poly([[-92,-148],[0,-179],[92,-148],[117,-41],[83,140],[0,172],[-83,140],[-117,-41]],body,edge,2);
+      for(let y=18;y<130;y+=32)line([[-70,y],[0,y+19],[70,y]],edge,2);
+      poly([[-77,-120],[0,-140],[77,-120],[65,-52],[0,-35],[-65,-52]],"#080e1c",edge,2);
+      line([[-52,-89],[-18,-78]],c,8);line([[18,-78],[52,-89]],c,8);
+      ellipse(0,22,30,30,"#091020",c,2);
+      ellipse(0,22,14+Math.sin(time*3)*2,14,c);
+      break;
+
+    case 1:
+      for(let i=0;i<8;i++){
+        ctx.save();ctx.rotate(i*TAU/8);
+        ctx.beginPath();ctx.moveTo(67,0);
+        ctx.bezierCurveTo(122,Math.sin(time+i)*45,163,-70,203,Math.sin(time*1.3+i)*38);
+        ctx.strokeStyle=boss.dark;ctx.lineWidth=26;ctx.lineCap="round";ctx.stroke();
+        ctx.strokeStyle=edge;ctx.lineWidth=2;ctx.stroke();
+        ctx.restore();
+      }
+      ellipse(0,-5,111,129,body,edge,2);
+      poly([[-80,-94],[-73,-177],[-22,-132],[0,-195],[25,-132],[76,-172],[83,-94]],body,edge,2);
+      ellipse(0,-6,78,53,"#050b15",c,2);
+      ellipse(Math.sin(time*.8)*9,-6,31,38,c);
+      ellipse(Math.sin(time*.8)*9,-6,9,30,"#050911");
+      ellipse(-11,-19,7,7,"#efffff");
+      line([[-36,81],[0,100],[36,81]],edge,2);
+      break;
+
+    case 2:
+      for(const s of [-1,1]){
+        poly([[s*70,-58],[s*155,-140],[s*210,-107],[s*178,-29],[s*207,48],[s*132,18],[s*83,87]],body,edge,2);
+        line([[s*94,-26],[s*151,-101],[s*177,-79]],edge,2);
+        poly([[s*46,-117],[s*87,-202],[s*106,-154],[s*90,-88]],body,c,2);
+      }
+      poly([[0,-145],[81,-99],[107,-15],[76,88],[31,148],[0,177],[-31,148],[-76,88],[-107,-15],[-81,-99]],body,edge,2);
+      for(let i=0;i<5;i++){
+        const y=7+i*28;
+        poly([[0,y-15],[34-i*4,y+3],[0,y+24],[-34+i*4,y+3]],"#ffffff08",edge,1);
+      }
+      poly([[-74,-66],[-19,-50],[-36,-28],[-63,-36]],c);
+      poly([[74,-66],[19,-50],[36,-28],[63,-36]],c);
+      poly([[-32,9],[0,-10],[32,9],[23,46],[0,60],[-23,46]],"#080d18",edge,2);
+      line([[-13,30],[0,37],[13,30]],"#efffff",2);
+      break;
+
+    case 3:
+      ctx.save();ctx.rotate(Math.sin(time*.5)*.1);
+      for(let i=0;i<7;i++){
+        ctx.save();ctx.rotate(i*TAU/7+time*.13);
+        poly([[0,-125],[-23,-160],[0,-207],[23,-160]],body,edge,2);
+        line([[0,-140],[0,-192]],c,2);ctx.restore();
+      }
+      poly([[0,-168],[107,-74],[90,92],[0,174],[-90,92],[-107,-74]],body,edge,2);
+      poly([[0,-168],[0,15],[-107,-74]],"#ffffff12",edge,1);
+      poly([[0,-168],[107,-74],[0,15]],"#ffffff05",edge,1);
+      poly([[-107,-74],[0,15],[-90,92]],"#00000020",edge,1);
+      poly([[107,-74],[90,92],[0,15]],"#ffffff0b",edge,1);
+      line([[0,15],[0,174]],edge,1);
+      poly([[0,-43],[33,0],[0,47],[-33,0]],c,"#eaffff",2);
+      ctx.restore();
+      break;
+
+    case 4:
+      for(let i=0;i<12;i++){
+        ctx.save();ctx.rotate(i*TAU/12+time*.08);
+        poly([[-11,-128],[0,-203-Math.sin(time*2+i)*7],[11,-128],[0,-109]],body,edge,1.5);
+        ctx.restore();
+      }
+      ellipse(0,0,162,162,null,edge,2);ellipse(0,0,142,142,null,c,1);
+      for(let i=0;i<5;i++){
+        const a=i*TAU/5+time*.24;
+        ellipse(Math.cos(a)*162,Math.sin(a)*162,7,7,c);
+      }
+      ellipse(0,0,108,108,body,edge,2);
+      ctx.save();ctx.rotate(-.45+Math.sin(time*.5)*.2);
+      ellipse(0,0,192,61,null,c,3);ctx.restore();
+      ellipse(0,0,61,61,"#091020",edge,2);
+      poly([[0,-44],[13,-13],[44,0],[13,13],[0,44],[-13,13],[-44,0],[-13,-13]],c,"#fff4d5",2);
+      break;
+
+    case 5:
+      for(let i=0;i<9;i++){
+        const x=(i-4)*26;
+        ctx.beginPath();ctx.moveTo(x,34);
+        ctx.bezierCurveTo(x+Math.sin(time*1.6+i)*48,93,x-42,140,x+Math.sin(time*1.3+i)*36,190+Math.cos(i)*18);
+        ctx.strokeStyle=`hsla(${boss.hue+i*5},85%,68%,.65)`;
+        ctx.lineWidth=i%2?5:10;ctx.lineCap="round";ctx.stroke();
+      }
+      ctx.beginPath();ctx.moveTo(-149,29);
+      ctx.bezierCurveTo(-168,-48,-108,-168,0,-173);
+      ctx.bezierCurveTo(108,-168,168,-48,149,29);
+      ctx.quadraticCurveTo(111,68,76,33);
+      ctx.quadraticCurveTo(34,69,0,36);
+      ctx.quadraticCurveTo(-34,69,-76,33);
+      ctx.quadraticCurveTo(-111,68,-149,29);
+      ctx.fillStyle=body;ctx.fill();ctx.strokeStyle=edge;ctx.lineWidth=2;ctx.stroke();
+      for(let i=-2;i<=2;i++){
+        ctx.beginPath();ctx.moveTo(0,-150);ctx.quadraticCurveTo(i*47,-90,i*53,23);
+        ctx.strokeStyle=edge;ctx.lineWidth=1;ctx.stroke();
+      }
+      ellipse(-43,-32,13,19,c);ellipse(43,-32,13,19,c);
+      ellipse(0,-92,25,22,"#ffffff0a",c,2);
+      break;
+  }
+  ctx.shadowBlur=0;
+  if(boss.hit>0){
+    ctx.save();ctx.globalAlpha=boss.hit*.9;
+    ellipse(0,0,217,220,"#eaffff");ctx.restore();
+  }
+  for(const z of boss.zones){
+    ctx.save();ctx.translate(z.x,z.y);
+    const r=z.radius*(1+Math.sin(time*4+z.mult)*.055);
+    ctx.shadowColor=z.color;ctx.shadowBlur=22;
+    ellipse(0,0,r,r,alpha(z.color,.13),z.color,2);
+    ellipse(0,0,r+7,r+7,null,alpha(z.color,.2),1);
+    ctx.save();ctx.rotate(time*(z.mult%2?1:-1));
+    for(let i=0;i<3;i++){
+      ctx.beginPath();ctx.arc(0,0,r+6,i*TAU/3,i*TAU/3+.6);
+      ctx.strokeStyle=z.color;ctx.lineWidth=3;ctx.stroke();
+    }
+    ctx.restore();ctx.shadowBlur=0;
+    ellipse(0,0,3,3,z.color);
+    ctx.fillStyle="#08101ce8";ctx.fillRect(-21,r+10,42,23);
+    text("×"+z.mult,0,r+27,15,z.color,850);
+    ctx.restore();
+  }
+  ctx.restore();
+}
+
+function effects(){
+  ctx.save();ctx.globalCompositeOperation="lighter";
+  if(active){
+    const a=active,g=a.event.gift;
+    const dx=a.tx-a.sx,dy=a.ty-a.sy,n=Math.hypot(dx,dy)||1;
+    const len=a.event.type==="rose"?38:80;
+    const grad=ctx.createLinearGradient(a.x-dx/n*len,a.y-dy/n*len,a.x,a.y);
+    grad.addColorStop(0,alpha(g.color,0));grad.addColorStop(1,g.color);
+    line([[a.x-dx/n*len,a.y-dy/n*len],[a.x,a.y]],grad,g.size);
+    ctx.shadowColor=g.color;ctx.shadowBlur=28;
+    ellipse(a.x,a.y,g.size,g.size,g.color);
+    ellipse(a.x,a.y,g.size*.4,g.size*.4,"#ffffff");
+    ctx.shadowBlur=0;
+    if(a.event.type==="galaxy"){
+      ctx.save();ctx.translate(a.x,a.y);ctx.rotate(time*7);
+      ellipse(0,0,30,11,null,g.color,2);ctx.restore();
+    }
+  }
+  for(const b of beams){
+    const opacity=b.life/b.max;
+    const grad=ctx.createLinearGradient(b.x-60,0,b.x+60,0);
+    grad.addColorStop(0,alpha(b.color,0));
+    grad.addColorStop(.5,alpha(b.color,opacity*.8));
+    grad.addColorStop(1,alpha(b.color,0));
+    ctx.fillStyle=grad;ctx.fillRect(b.x-60,0,120,b.y+130);
+    line([[b.x,0],[b.x,b.y+40]],alpha("#ffffff",opacity),5);
+  }
+  for(const r of rings){
+    const t=1-r.life/r.max,size=r.radius*(1-(1-t)**3);
+    ellipse(r.x,r.y,size,size,null,alpha(r.color,(1-t)*.8),3*(1-t)+.5);
+  }
+  for(const p of particles){
+    ctx.globalAlpha=clamp(p.life/p.max,0,1);
+    ellipse(p.x,p.y,p.size,p.size,p.color);
+  }
+  ctx.restore();
+  for(const l of labels){
+    ctx.save();ctx.globalAlpha=Math.min(1,l.life*3);
+    ctx.shadowColor="#000";ctx.shadowBlur=12;
+    text(l.text,l.x,l.y,l.size,l.color,850);ctx.restore();
+  }
+}
+
+function portal(){
+  ctx.save();ctx.translate(450,750);
+  ellipse(0,0,71,17,"#6ef3ff05","#6ef3ff30",1);
+  ellipse(0,0,43,10,"#6ef3ff08","#6ef3ff77",2);
+  ctx.shadowColor="#6ef3ff";ctx.shadowBlur=18;
+  ellipse(0,-5,10+Math.sin(time*3)*2,5,"#a2faff");
+  ctx.restore();
+}
+function messages(){
+  if(mode==="waiting"){
+    text("АРЕНА ГОТОВА",450,684,11,"#6ef3ff");
+    text("Отправь первый подарок",450,714,22,"#e5edff",800);
+  }
+  if(mode==="between"){
+    ctx.fillStyle="#080e1b88";ctx.fillRect(0,240,W,340);
+    text(result.won?"BOSS DEFEATED":"TIME OVER",450,328,12,result.won?"#6ef3ff":"#ff8ead");
+    text(result.won?"БОСС ПОВЕРЖЕН":"БОСС УСТОЯЛ",450,387,40,"#eef4ff",900);
+    text("Следующий босс: "+result.change+" здоровья",450,430,17,"#bac8e1",500);
+    if(result.won)text("Последний удар: "+result.killer,450,464,13,"#92a8c8",500);
+    text("НОВЫЙ РАУНД ЧЕРЕЗ "+Math.max(1,Math.ceil(intermission)),450,509,12,"#6ef3ff");
+  }
+  if(paused){
+    ctx.fillStyle="#070d19bb";ctx.fillRect(0,0,W,H);
+    text("ПАУЗА",450,401,45,"#edf4ff",900);
+    text("Подарки сохраняются в очереди",450,440,15,"#a5b8d5",500);
+  }
+}
+function render(){
+  ctx.setTransform(view.dpr,0,0,view.dpr,0,0);
+  ctx.clearRect(0,0,view.w,view.h);
+  ctx.fillStyle="#080e1c";ctx.fillRect(0,0,view.w,view.h);
+  ctx.translate(view.x,view.y);ctx.scale(view.s,view.s);
+  ctx.save();ctx.beginPath();ctx.rect(0,0,W,H);ctx.clip();
+  if(shake&&!paused)ctx.translate(random(-shake,shake)*.4,random(-shake,shake)*.4);
+  background();drawBoss();portal();effects();
+  if(flash>0){ctx.fillStyle=`rgba(210,230,255,${flash*.4})`;ctx.fillRect(0,0,W,H);}
+  messages();ctx.restore();
+}
+function resize(){
+  const r=canvas.getBoundingClientRect();
+  view.w=r.width;view.h=r.height;view.dpr=Math.min(devicePixelRatio||1,2);
+  canvas.width=Math.round(r.width*view.dpr);canvas.height=Math.round(r.height*view.dpr);
+  view.s=Math.min(r.width/W,r.height/H);
+  view.x=(r.width-W*view.s)/2;view.y=(r.height-H*view.s)/2;
+}
+new ResizeObserver(resize).observe($("arena"));
+
+function send(type){
+  window.receiveGift({type,user:$("username").value});
+}
+document.querySelectorAll("[data-gift]").forEach(button=>{
+  button.addEventListener("click",()=>send(button.dataset.gift));
+});
+$("demoBtn").addEventListener("click",()=>{
+  demo=!demo;demoTimer=.1;
+  $("demoBtn").classList.toggle("active",demo);
+  $("demoBtn").setAttribute("aria-pressed",String(demo));
+});
+function togglePause(){
+  paused=!paused;
+  $("pauseBtn").textContent=paused?"Продолжить":"Пауза";
+}
+$("pauseBtn").addEventListener("click",togglePause);
+$("soundBtn").addEventListener("click",()=>{
+  sound=!sound;
+  $("soundBtn").textContent=sound?"Звук: вкл":"Звук: выкл";
+  if(sound)tone(640,.18);
+});
+$("resetBtn").addEventListener("click",()=>{
+  round=1;difficulty=1;nextDifficulty=1;wins=0;totalGifts=0;
+  mode="waiting";paused=false;demo=false;active=null;queue=[];
+  particles=[];rings=[];labels=[];beams=[];feedRows=[];
+  flash=0;shake=0;result=null;
+  $("giftFeed").replaceChildren();
+  const empty=document.createElement("div");
+  empty.className="feed-empty";empty.textContent="Здесь появятся подарки, отправители и нанесённый урон.";
+  $("giftFeed").append(empty);
+  $("demoBtn").classList.remove("active");
+  $("demoBtn").setAttribute("aria-pressed","false");
+  $("pauseBtn").textContent="Пауза";
+  $("adaptiveText").textContent="Ранняя победа усиливает следующего босса. Если времени не хватило — следующий босс станет слабее.";
+  $("lastEvent").textContent="Битва начнётся с первого подарка.";
+  createBoss();
+});
+window.addEventListener("keydown",e=>{
+  if(e.target instanceof HTMLInputElement || e.repeat || e.ctrlKey || e.metaKey || e.altKey)return;
+  const type={Digit1:"rose",Digit2:"meteor",Digit3:"galaxy",Numpad1:"rose",Numpad2:"meteor",Numpad3:"galaxy"}[e.code];
+  if(type){e.preventDefault();send(type);}
+  if(e.code==="KeyP"){e.preventDefault();togglePause();}
+});
+document.addEventListener("visibilitychange",()=>{
+  if(document.hidden&&!paused&&mode!=="waiting")togglePause();
+});
+
+createBoss();resize();
+let previous=performance.now();
+function frame(now){
+  const dt=Math.min((now-previous)/1000,.1);previous=now;
+  update(dt);render();requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
